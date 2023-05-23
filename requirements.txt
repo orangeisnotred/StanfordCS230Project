@@ -1,0 +1,13 @@
+pip install adversarial-robustness-toolbox
+pip install tensorflow
+pip install Pillow
+
+
+pip install cleverhans
+pip install tensorflow_datasets
+
+pip install efficientnet
+
+
+
+pip install opencv-python
