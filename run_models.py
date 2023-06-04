@@ -29,9 +29,9 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
-    handlers=[
-        logging.FileHandler(f'log_files/logfile_resnet50_{cur_time}.log'),  # Specify the path to the log file
-    ]
+    # handlers=[
+    #     logging.FileHandler(f'log_files/logfile_resnet50_{cur_time}.log'),  # Specify the path to the log file
+    # ]
 )
 
 # Create a logger instance
