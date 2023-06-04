@@ -159,7 +159,7 @@ class MyDataset:
             image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
             rgb_image = np.stack((image,) * 3, axis=-1)
             self.val_images.append(rgb_image)
-        self.val_images = np.arrary(self.val_images)
+        self.val_images = np.array(self.val_images)
         self.val_labels = self.train_labels[val_indices]
 
         self.train_images = []
@@ -167,7 +167,7 @@ class MyDataset:
             image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
             rgb_image = np.stack((image,) * 3, axis=-1)
             self.train_images.append(rgb_image)
-        self.train_images = np.arrary(self.train_images)
+        self.train_images = np.array(self.train_images)
         self.train_labels = self.train_labels[train_indices]
 
         if not test_example_counts:
@@ -180,7 +180,7 @@ class MyDataset:
             image = cv2.resize(img, self.target_size, interpolation=cv2.INTER_LINEAR)
             rgb_image = np.stack((image,) * 3, axis=-1)
             self.test_images.append(rgb_image)
-        self.test_images = np.arrary(self.test_images)
+        self.test_images = np.array(self.test_images)
 
         dir_path = f"dataset_{self.dataset}_train_{train_exmaple_counts}_test_{test_example_counts}"
         os.makedirs(dir_path, exist_ok = True)
