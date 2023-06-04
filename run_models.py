@@ -14,6 +14,7 @@ import numpy as np
 import random
 import cv2
 import matplotlib.pyplot as plt
+import pdb
 
 from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient_descent
 from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
@@ -30,7 +31,7 @@ logging.basicConfig(
         logging.FileHandler(f'log_files/logfile_resnet50_{datetime.datetime.now()}.log'),  # Specify the path to the log file
     ]
 )
-
+os.makedirs('log_files', exist_ok = True)
 # Create a logger instance
 logger = logging.getLogger()
 
@@ -67,7 +68,8 @@ class MyDataset:
         self.test_images_pgd_effnetB5 = None
         self.test_images_fgsm_resnet50 = None
         self.test_images_pgd_resnet50 = None
-
+        pdb.set_trace()
+        
         if self.dataset == 'preprocessed':
             self.load_processed_data(self.processed_data_dir)
         elif self.dataset == 'mnist':
