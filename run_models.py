@@ -181,6 +181,7 @@ class MyDataset:
             self.val_data.append(rgb_image)
         self.val_images = np.array(self.val_data)
         self.val_labels = self.train_labels[val_indices]
+        print(f"Val data ready")
         logging.info(f"Val data ready")
 
         self.train_data = []
@@ -190,6 +191,7 @@ class MyDataset:
             self.train_data.append(rgb_image)
         self.train_images = np.array(self.train_data)
         self.train_labels = self.train_labels[train_indices]
+        print(f"Train data ready")
         logging.info(f"Train data ready")
 
         if not test_example_counts:
@@ -203,6 +205,7 @@ class MyDataset:
             rgb_image = np.stack((image,) * 3, axis=-1)
             self.test_data.append(rgb_image)
         self.test_images = np.array(self.test_data)
+        print(f"Test data ready")
         logging.info(f"Test data ready")
 
         
