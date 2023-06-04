@@ -4,7 +4,6 @@ from tensorflow.keras.applications import VGG16, ResNet50, ResNet101
 from efficientnet.tfkeras import EfficientNetB5
 from tensorflow.keras.models import Model
 from tensorflow.keras.models import load_model
-from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import os
@@ -55,6 +54,7 @@ class MyDataset:
             self.load_mnist()
             self.pre_process_data(train_exmaple_counts=self.train_exmaple_counts, test_example_counts=self.test_example_counts)
 
+        
 
     def load_mnist(self):
         (x_train, y_train), (x_test, y_test) = mnist.load_data()
@@ -134,23 +134,13 @@ class MyDataset:
             print("Load from: ", path)
         
     
-    def pre_process_data(self, train_exmaple_counts=None, test_example_counts=None, val_percentage=0.2):
+    def pre_process_data(self, train_exmaple_counts=None, test_example_counts=None):
         if not train_exmaple_counts:
             train_exmaple_counts = self.train_images.shape[0]
         self.train_images = self.train_images[:train_exmaple_counts, ...]
         self.train_labels = self.train_labels[:train_exmaple_counts, ...]
-
-        validation_size = int(val_percentage * len(self.train_images))
-        val_indices = tf.random.shuffle(tf.range(0, len(self.train_images)))[:validation_size].numpy().tolist()
-        train_indices = list(set(range(len(self.train_images))) - set(val_indices))
-
-        self.val_images = np.array([cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR) for index in val_indices])
-        self.val_images = np.stack((self.val_images,) * 3, axis=-1)
-        self.val_labels = self.train_labels[val_indices]
-
-        self.train_images = np.array([cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR) for index in train_indices])
+        self.train_images = np.array([cv2.resize(img, self.target_size, interpolation=cv2.INTER_LINEAR) for img in self.train_images])
         self.train_images = np.stack((self.train_images,) * 3, axis=-1)
-        self.train_labels = self.train_labels[train_indices]
         
         if not test_example_counts:
             test_example_counts = self.test_images.shape[0]
@@ -166,10 +156,6 @@ class MyDataset:
         print("Save to", save_path)
         np.save(save_path, self.train_images)
 
-        save_path = os.path.join(dir_path, "val_images.npy")
-        print("Save to", save_path)
-        np.save(save_path, self.val_images)
-
         save_path = os.path.join(dir_path, "test_images.npy")
         print("Save to", save_path)
         np.save(save_path, self.test_images)
@@ -178,81 +164,9 @@ class MyDataset:
         print("Save to", save_path)
         np.save(save_path, self.train_labels)
 
-        save_path = os.path.join(dir_path, "val_labels.npy")
-        print("Save to", save_path)
-        np.save(save_path, self.val_labels)
-
         save_path = os.path.join(dir_path, "test_labels.npy")
         print("Save to", save_path)
         np.save(save_path, self.test_labels)
-
-    def random_split_train_validation_set(self, data, labels, batch_size, random_state=0):
-        
-        validation_size = int(0.2 * len(data))
-        val_indices = tf.random.shuffle(tf.range(0, len(data)))[:validation_size].numpy().tolist()
-        train_indices = list(set(range(len(data))) - set(val_indices))
-        val_data = data[val_indices] 
-        val_labels = labels[val_indices] 
-        train_data = np.zeros((48000, 224, 224, 3))
-        train_data[:12000] = data[train_indices[:12000]]
-        train_data[12000:24000] = data[train_indices[12000:24000]]
-        train_data[24000:36000] = data[train_indices[24000:36000]]
-        train_data[36000:48000] = data[train_indices[36000:48000]]
-        train_labels = labels[train_indices]
-
-        print("Save to", 'dataset_mnist_train_60000_test_10000/validation_images.npy')
-        np.save('dataset_mnist_train_60000_test_10000/validation_images.npy', val_data)
-
-        print("Save to", 'dataset_mnist_train_60000_test_10000/validation_labels.npy')
-        np.save('dataset_mnist_train_60000_test_10000/validation_labels.npy', val_labels)
-        
-
-        print("Save to", 'dataset_mnist_train_60000_test_10000/train_images.npy')
-        np.save('dataset_mnist_train_60000_test_10000/train_images.npy', train_data)
-
-        print("Save to", 'dataset_mnist_train_60000_test_10000/train_labels.npy')
-        np.save('dataset_mnist_train_60000_test_10000/train_labels.npy', train_labels)
-
-
-
-        
-
-        
-        batch_size = 1000
-        num = int(len(data.train_labels) / batch_size)
-        for n in range(num):
-            print(f"Batch - {n + 1}/{num}")
-            
-            resnet50.model.fit(mydata.train_images[batch_size * n: batch_size * (n + 1)], mydata.train_labels[batch_size * n: batch_size * (n + 1)], epochs=50, batch_size=128)
-
-
-        train_data, val_data, train_labels, val_labels = train_test_split(data, labels, test_size=0.2, random_state=random_state)
-
-
-
-        
-        
-        dataset = tf.data.Dataset.from_tensor_slices((data, labels))
-        dataset = dataset.shuffle(len(data), reshuffle_each_iteration=False)
-
-        train_dataset = dataset.skip(validation_size)
-        val_dataset = dataset.take(validation_size)
-
-        # num_samples = train_data.shape[0]
-
-        # Create a random permutation of indices
-        indices = tf.range(train_data.shape[0])
-        shuffled_indices = tf.random.shuffle(indices)
-
-        # # Shuffle the data and labels using the shuffled indices
-        # shuffled_data = tf.gather(data, shuffled_indices)
-        # shuffled_labels = tf.gather(labels, shuffled_indices)
-
-
-        train_iterator = train_dataset.batch(batch_size).prefetch(1).make_one_shot_iterator()
-        val_iterator = val_dataset.batch(batch_size).prefetch(1).make_one_shot_iterator()
-
-        return train_data, val_data, train_labels, val_labels, shuffled_indices
 
 
 class MyModel:
@@ -263,13 +177,6 @@ class MyModel:
     
     def set_model_name(self, name):
         self.name = name
-    
-    def early_stopping(self):
-        early_stopping = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss',  # Monitor the validation loss for early stopping
-        patience=5,           # Number of epochs with no improvement after which training will be stopped
-        restore_best_weights=True  # Restore the weights of the best-performing model
-    )
 
     def preload_vgg16(self, weights='imagenet', include_top=False):
         vgg_model = VGG16(weights=weights, include_top=include_top, input_shape=(224, 224, 3))
@@ -546,6 +453,90 @@ def effnetB5_training(mydata, preload_model=None, model_name_set_to=None, model_
     
     return effnetB5
 
+def resnet50_training(mydata, preload_model=None, model_name_set_to=None, model_save_to='saved_models_no_given_dir', generate_images_dir_path=None, train_model_clean=False, run_eval_clean=False, run_eval_fgsm=False, run_eval_pgd=False, 
+                      generate_images_fgsm=False, generate_images_pgd=False, train_model_fgsm=False, train_model_pgd=False):
+    resnet50 = MyModel(10)
+    resnet50.preload_resnet50()
+    resnet50.set_model_name(model_name_set_to)
+
+    if preload_model:
+        # load trained resnet50 with mnist
+        resnet50.model=load_model(preload_model)
+        resnet50.model.summary()
+        print(f'{preload_model} Model Loaded!')
+
+    if train_model_clean:
+        # train preload resnet50 with mnist
+        batch_size = 1000
+        num = int(len(mydata.train_labels) / batch_size)
+        for n in range(num):
+            print(f"Training - {n + 1}/{num}")
+            resnet50.model.fit(mydata.train_images[batch_size * n: batch_size * (n + 1)], mydata.train_labels[batch_size * n: batch_size * (n + 1)], epochs=50, batch_size=128)
+        
+        # save model
+        resnet50.model.save(f'{model_save_to}/mnist_resnet50_model.h5')
+        print('mnist_resnet50_model Model Saved!')
+
+        # save model
+        resnet50.model.save_weights(f'{model_save_to}/mnist_resnet50_weights.h5')
+        print('mnist_resnet50_model Weights Saved!')
+
+    if generate_images_fgsm:
+        mydata.train_images_fgsm_resnet50 = generate_adversarial_images_with_fgsm(resnet50.model, mydata.train_images, "train_images_fgsm_resnet50.npy", dir_path=generate_images_dir_path)
+        mydata.test_images_fgsm_resnet50 = generate_adversarial_images_with_fgsm(resnet50.model, mydata.test_images, "test_images_fgsm_resnet50.npy", dir_path=generate_images_dir_path)
+
+    if train_model_fgsm:
+        # train preload resnet50 with mnist
+        batch_size = 1000
+        num = int(len(mydata.train_labels) / batch_size)
+        for n in range(num):
+            print(f"Training - {n + 1}/{num}")
+            resnet50.model.fit(mydata.train_images_fgsm_resnet50[batch_size * n: batch_size * (n + 1)], mydata.train_labels[batch_size * n: batch_size * (n + 1)], epochs=20, batch_size=128)
+        
+        # save model
+        resnet50.model.save(f'{model_save_to}/mnist_resnet50_model_with_fgsm_resnet50.h5')
+        print('mnist_resnet50_model_with_fgsm_resnet50 Model Saved!')
+
+        # save model
+        resnet50.model.save_weights(f'{model_save_to}/mnist_resnet50_weights_with_fgsm_resnet50.h5')
+        print('mnist_resnet50_model_with_fgsm_resnet50 Weights Saved!')
+
+    if generate_images_pgd:
+        mydata.train_images_pgd_resnet50 = generate_adversarial_images_with_pgd(resnet50.model, mydata.train_images, "train_images_pgd_resnet50.npy", dir_path=generate_images_dir_path)
+        mydata.test_images_pgd_resnet50 = generate_adversarial_images_with_pgd(resnet50.model, mydata.test_images, "test_images_pgd_resnet50.npy", dir_path=generate_images_dir_path)
+
+    if train_model_pgd:
+        # train preload resnet50 with mnist
+        batch_size = 1000
+        num = int(len(mydata.train_labels) / batch_size)
+        for n in range(num):
+            print(f"Training - {n + 1}/{num}")
+            resnet50.model.fit(mydata.train_images_pgd_resnet50[batch_size * n: batch_size * (n + 1)], mydata.train_labels[batch_size * n: batch_size * (n + 1)], epochs=1, batch_size=128)
+        
+        # save model
+        resnet50.model.save(f'{model_save_to}/mnist_resnet50_model_with_pgd_resnet50.h5')
+        print('mnist_resnet50_model_with_pgd_resnet50 Model Saved!')
+
+        # save model
+        resnet50.model.save_weights(f'{model_save_to}/mnist_resnet50_weights_with_pgd_resnet50.h5')
+        print('mnist_resnet50_model_with_pgd_resnet50 Weights Saved!')
+
+    if run_eval_clean:
+        test_loss, test_accuracy = resnet50.model.evaluate(x=mydata.test_images, y=mydata.test_labels, batch_size=128)
+        print(f'mnist_resnet50_model - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
+        # mnist_resnet50_model - Test loss: 0.04019283875823021. Test Accuracy: 0.9871000051498413
+    
+    if run_eval_fgsm:  
+        test_loss, test_accuracy = resnet50.model.evaluate(x=mydata.test_images_fgsm_resnet50, y=mydata.test_labels, batch_size=128)
+        print(f'mnist_resnet50_model on self-generated FGSM attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
+        # mnist_resnet50_model on self-generated FGSM attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
+
+    if run_eval_pgd:
+        test_loss, test_accuracy = resnet50.model.evaluate(x=mydata.test_images_pgd_resnet50, y=mydata.test_labels, batch_size=128)
+        print(f'mnist_resnet50_model on self-generated PGD attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
+        # mnist_resnet50_model on self-generated PGD attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
+    
+    return resnet50
 
 def resnet101_training(mydata, preload_model=None, model_name_set_to=None, model_save_to='saved_models_no_given_dir', generate_images_dir_path=None, train_model_clean=False, run_eval_clean=False, run_eval_fgsm=False, run_eval_pgd=False, 
                       generate_images_fgsm=False, generate_images_pgd=False, train_model_fgsm=False, train_model_pgd=False):
@@ -669,7 +660,6 @@ def main():
     # # mydata = MyDataset('mnist', (224, 224))
 
     # mydata = MyDataset('mnist', (224, 224), train_exmaple_counts=2000, test_example_counts=100)
-    mydata = MyDataset('mnist', (224, 224))
     # mydata = MyDataset('preprocessed', (224, 224), processed_data_dir='dataset_mnist_train_60000_test_10000')
     mydata = MyDataset('preprocessed', (224, 224), processed_data_dir='dataset_mnist_train_2000_test_100')
     
