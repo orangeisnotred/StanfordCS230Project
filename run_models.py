@@ -19,6 +19,7 @@ from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient
 from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
 
 # os.environ["TF_METAL_ENABLED"] = "1"
+print("GPU available: ", tf.test.is_gpu_available())
 
 class MyDataset:
     def __init__(self, dataset, target_img_size, train_exmaple_counts=None, test_example_counts=None, processed_data_dir=None):
@@ -153,20 +154,33 @@ class MyDataset:
             val_indices = tf.random.shuffle(tf.range(0, len(self.train_images)))[:validation_size].numpy().tolist()
             train_indices = list(set(range(len(self.train_images))) - set(val_indices))
 
-        self.val_images = np.array([cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR) for index in val_indices])
-        self.val_images = np.stack((self.val_images,) * 3, axis=-1)
+        self.val_images = []
+        for index in val_indices:
+            image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
+            rgb_image = np.stack((image,) * 3, axis=-1)
+            self.val_images.append(rgb_image)
+        self.val_images = np.arrary(self.val_images)
         self.val_labels = self.train_labels[val_indices]
 
-        self.train_images = np.array([cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR) for index in train_indices])
-        self.train_images = np.stack((self.train_images,) * 3, axis=-1)
+        self.train_images = []
+        for index in train_indices:
+            image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
+            rgb_image = np.stack((image,) * 3, axis=-1)
+            self.train_images.append(rgb_image)
+        self.train_images = np.arrary(self.train_images)
         self.train_labels = self.train_labels[train_indices]
-        
+
         if not test_example_counts:
             test_example_counts = self.test_images.shape[0]
         self.test_images = self.test_images[:test_example_counts, ...]
         self.test_labels = self.test_labels[:test_example_counts, ...]
-        self.test_images = np.array([cv2.resize(img, self.target_size, interpolation=cv2.INTER_LINEAR) for img in self.test_images])
-        self.test_images = np.stack((self.test_images,) * 3, axis=-1)
+
+        self.test_images = []
+        for img in self.test_images:
+            image = cv2.resize(img, self.target_size, interpolation=cv2.INTER_LINEAR)
+            rgb_image = np.stack((image,) * 3, axis=-1)
+            self.test_images.append(rgb_image)
+        self.test_images = np.arrary(self.test_images)
 
         dir_path = f"dataset_{self.dataset}_train_{train_exmaple_counts}_test_{test_example_counts}"
         os.makedirs(dir_path, exist_ok = True)
@@ -810,7 +824,7 @@ def main():
     # # mnist_vgg16_model on self-generated FGSM attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
 
 
-    print()
+    print('Done')
 
 # Check if the current module is the main module
 if __name__ == "__main__":
