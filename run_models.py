@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 import os
+import pandas as pd
 
 import numpy as np
 import random
@@ -17,7 +18,7 @@ import matplotlib.pyplot as plt
 from cleverhans.tf2.attacks.projected_gradient_descent import projected_gradient_descent
 from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
 
-os.environ["TF_METAL_ENABLED"] = "1"
+# os.environ["TF_METAL_ENABLED"] = "1"
 
 class MyDataset:
     def __init__(self, dataset, target_img_size, train_exmaple_counts=None, test_example_counts=None, processed_data_dir=None):
@@ -75,10 +76,14 @@ class MyDataset:
     def load_processed_data(self, processed_data_dir):
         self.train_images = np.load(os.path.join(processed_data_dir, 'train_images.npy'))
         print("Load from: ", os.path.join(processed_data_dir, 'train_images.npy'))
+        self.val_images = np.load(os.path.join(processed_data_dir, 'val_images.npy'))
+        print("Load from: ", os.path.join(processed_data_dir, 'val_images.npy'))
         self.test_images = np.load(os.path.join(processed_data_dir, 'test_images.npy'))
         print("Load from: ", os.path.join(processed_data_dir, 'test_images.npy'))
         self.train_labels = np.load(os.path.join(processed_data_dir, 'train_labels.npy'))
         print("Load from: ", os.path.join(processed_data_dir, 'train_labels.npy'))
+        self.val_labels = np.load(os.path.join(processed_data_dir, 'val_labels.npy'))
+        print("Load from: ", os.path.join(processed_data_dir, 'val_labels.npy'))
         self.test_labels = np.load(os.path.join(processed_data_dir, 'test_labels.npy'))
         print("Load from: ", os.path.join(processed_data_dir, 'test_labels.npy'))
 
@@ -140,9 +145,13 @@ class MyDataset:
         self.train_images = self.train_images[:train_exmaple_counts, ...]
         self.train_labels = self.train_labels[:train_exmaple_counts, ...]
 
-        validation_size = int(val_percentage * len(self.train_images))
-        val_indices = tf.random.shuffle(tf.range(0, len(self.train_images)))[:validation_size].numpy().tolist()
-        train_indices = list(set(range(len(self.train_images))) - set(val_indices))
+        if os.path.exists("val_indices.csv"):
+            val_indices = list(pd.read_csv("val_indices.csv")['ids'])
+            train_indices = list(set(range(len(self.train_images))) - set(val_indices))
+        else:
+            validation_size = int(val_percentage * len(self.train_images))
+            val_indices = tf.random.shuffle(tf.range(0, len(self.train_images)))[:validation_size].numpy().tolist()
+            train_indices = list(set(range(len(self.train_images))) - set(val_indices))
 
         self.val_images = np.array([cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR) for index in val_indices])
         self.val_images = np.stack((self.val_images,) * 3, axis=-1)
@@ -671,79 +680,79 @@ def main():
     # mydata = MyDataset('mnist', (224, 224), train_exmaple_counts=2000, test_example_counts=100)
     mydata = MyDataset('mnist', (224, 224))
     # mydata = MyDataset('preprocessed', (224, 224), processed_data_dir='dataset_mnist_train_60000_test_10000')
-    mydata = MyDataset('preprocessed', (224, 224), processed_data_dir='dataset_mnist_train_2000_test_100')
+    # mydata = MyDataset('preprocessed', (224, 224), processed_data_dir='dataset_mnist_train_2000_test_100')
     
-    # effnetB5 = effnetB5_training(mydata, model_name_set_to='effnetB5', 
-    #                              model_save_to='saved_models_train_2000_test_100', 
-    #                              train_model_clean=True, run_eval_clean=True)
-    # effnetB5_fgsm_trained = effnetB5_training(mydata, model_name_set_to='effnetB5_fgsm_trained', 
-    #                                           preload_model='saved_models_train_2000_test_100/mnist_effnetB5_model.h5', 
-    #                                           model_save_to='saved_models_train_2000_test_100', 
-    #                                           generate_images_dir_path='dataset_mnist_train_2000_test_100',
-    #                                           generate_images_fgsm=True, train_model_fgsm=True)
+    # # effnetB5 = effnetB5_training(mydata, model_name_set_to='effnetB5', 
+    # #                              model_save_to='saved_models_train_2000_test_100', 
+    # #                              train_model_clean=True, run_eval_clean=True)
+    # # effnetB5_fgsm_trained = effnetB5_training(mydata, model_name_set_to='effnetB5_fgsm_trained', 
+    # #                                           preload_model='saved_models_train_2000_test_100/mnist_effnetB5_model.h5', 
+    # #                                           model_save_to='saved_models_train_2000_test_100', 
+    # #                                           generate_images_dir_path='dataset_mnist_train_2000_test_100',
+    # #                                           generate_images_fgsm=True, train_model_fgsm=True)
     
-    # resnet50 = resnet50_training(mydata, model_name_set_to='resnet50', 
-    #                              model_save_to='saved_models_train_2000_test_100', 
-    #                              train_model_clean=True, run_eval_clean=True)
-    # resnet50_fgsm_trained = resnet50_training(mydata, model_name_set_to='resnet50_fgsm_trained', 
-    #                                           preload_model='saved_models_train_2000_test_100/mnist_resnet50_model.h5', 
-    #                                           model_save_to='saved_models_train_2000_test_100', 
-    #                                           generate_images_dir_path='dataset_mnist_train_2000_test_100',
-    #                                           generate_images_fgsm=True, train_model_fgsm=True)
+    # # resnet50 = resnet50_training(mydata, model_name_set_to='resnet50', 
+    # #                              model_save_to='saved_models_train_2000_test_100', 
+    # #                              train_model_clean=True, run_eval_clean=True)
+    # # resnet50_fgsm_trained = resnet50_training(mydata, model_name_set_to='resnet50_fgsm_trained', 
+    # #                                           preload_model='saved_models_train_2000_test_100/mnist_resnet50_model.h5', 
+    # #                                           model_save_to='saved_models_train_2000_test_100', 
+    # #                                           generate_images_dir_path='dataset_mnist_train_2000_test_100',
+    # #                                           generate_images_fgsm=True, train_model_fgsm=True)
     
-    # effnetB5 = effnetB5_training(mydata, model_name_set_to='effnetB5', preload_model='saved_models/mnist_effnetB5_model.h5', train_model_clean=True, run_eval_clean=True)
-    # effnetB5 = effnetB5_training(mydata, model_name_set_to='effnetB5', preload_model='saved_models/mnist_effnetB5_model.h5', train_model_clean=True, run_eval_clean=True)
-    # effnetB5_fgsm_trained = effnetB5_training(mydata, model_name_set_to='effnetB5_fgsm_trained', preload_model='saved_models/mnist_effnetB5_model.h5', generate_images_fgsm=True, train_model_fgsm=True)
-    # effnetB5_pgd_trained = effnetB5_training(mydata, preload_model='saved_models/mnist_effnetB5_model.h5', generate_images_pgd=True, train_model_pgd=True)
-    # vgg16 = vgg16_training(mydata, model_name_set_to='vgg16', model_save_to='saved_models_train_2000_test_100', train_model_clean=True, run_eval_clean=True)
-    # vgg16 = vgg16_training(mydata, model_name_set_to='vgg16',  preload_model='saved_models_train_2000_test_100/mnist_vgg16_model.h5')
-    # vgg16_fgsm_trained = vgg16_training(mydata, model_name_set_to='vgg16_fgsm_trained', preload_model='saved_models_train_2000_test_100/mnist_vgg16_model.h5', generate_images_dir_path='dataset_mnist_train_2000_test_100', generate_images_fgsm=True, train_model_fgsm=True)
-    # vgg16_pgd_trained = vgg16_training(mydata, preload_model='saved_models/mnist_vgg16_model.h5', generate_images_pgd=True, train_model_pgd=True)
+    # # effnetB5 = effnetB5_training(mydata, model_name_set_to='effnetB5', preload_model='saved_models/mnist_effnetB5_model.h5', train_model_clean=True, run_eval_clean=True)
+    # # effnetB5 = effnetB5_training(mydata, model_name_set_to='effnetB5', preload_model='saved_models/mnist_effnetB5_model.h5', train_model_clean=True, run_eval_clean=True)
+    # # effnetB5_fgsm_trained = effnetB5_training(mydata, model_name_set_to='effnetB5_fgsm_trained', preload_model='saved_models/mnist_effnetB5_model.h5', generate_images_fgsm=True, train_model_fgsm=True)
+    # # effnetB5_pgd_trained = effnetB5_training(mydata, preload_model='saved_models/mnist_effnetB5_model.h5', generate_images_pgd=True, train_model_pgd=True)
+    # # vgg16 = vgg16_training(mydata, model_name_set_to='vgg16', model_save_to='saved_models_train_2000_test_100', train_model_clean=True, run_eval_clean=True)
+    # # vgg16 = vgg16_training(mydata, model_name_set_to='vgg16',  preload_model='saved_models_train_2000_test_100/mnist_vgg16_model.h5')
+    # # vgg16_fgsm_trained = vgg16_training(mydata, model_name_set_to='vgg16_fgsm_trained', preload_model='saved_models_train_2000_test_100/mnist_vgg16_model.h5', generate_images_dir_path='dataset_mnist_train_2000_test_100', generate_images_fgsm=True, train_model_fgsm=True)
+    # # vgg16_pgd_trained = vgg16_training(mydata, preload_model='saved_models/mnist_vgg16_model.h5', generate_images_pgd=True, train_model_pgd=True)
     
-    # resnet50_fgsm_trained = resnet50_training(mydata, model_name_set_to='resnet50_fgsm_trained',  
-    #                              preload_model='saved_models_train_2000_test_100/mnist_resnet50_model_with_fgsm_resnet50.h5', 
-    #                              generate_images_fgsm=True,
-    #                              generate_images_dir_path="dataset_mnist_train_2000_test_100_resnet50_fgsm_trained")
-    # vgg16_fgsm_trained = vgg16_training(mydata, model_name_set_to='vgg16_fgsm_trained',  
-    #                               preload_model='saved_models_train_2000_test_100/mnist_vgg16_model_with_fgsm_vgg16.h5', 
-    #                               generate_images_fgsm=True,
-    #                               generate_images_dir_path="dataset_mnist_train_2000_test_100_vgg16_fgsm_trained")
-    # # vgg16 = vgg16_training(mydata, model_name_set_to='vgg16',  
-    # #                        preload_model='saved_models_train_2000_test_100/mnist_vgg16_model.h5')
-    # # pretrained_models = [vgg16_fgsm_trained, resnet50_fgsm_trained]
-    # # ensemble_training(mydata, vgg16, pretrained_models=pretrained_models, batch_size=200, generate_images_dir_path="dataset_mnist_vgg16_ensemble_training_vgg16_fgsm_trained_resnet50_fgsm_trained")
-    # vgg16_ensemble_trained = vgg16_training(mydata, model_name_set_to='vgg16_ensemble_trained',  
-    #                               preload_model='saved_model_vgg16_ensemble_vgg16_fgsm_trained_resnet50_fgsm_trained/mnist_vgg16_model_ensemble_adversarial.h5', 
-    #                               generate_images_fgsm=True,
-    #                               generate_images_dir_path="dataset_mnist_train_2000_test_100_vgg16_ensemble_trained")
+    # # resnet50_fgsm_trained = resnet50_training(mydata, model_name_set_to='resnet50_fgsm_trained',  
+    # #                              preload_model='saved_models_train_2000_test_100/mnist_resnet50_model_with_fgsm_resnet50.h5', 
+    # #                              generate_images_fgsm=True,
+    # #                              generate_images_dir_path="dataset_mnist_train_2000_test_100_resnet50_fgsm_trained")
+    # # vgg16_fgsm_trained = vgg16_training(mydata, model_name_set_to='vgg16_fgsm_trained',  
+    # #                               preload_model='saved_models_train_2000_test_100/mnist_vgg16_model_with_fgsm_vgg16.h5', 
+    # #                               generate_images_fgsm=True,
+    # #                               generate_images_dir_path="dataset_mnist_train_2000_test_100_vgg16_fgsm_trained")
+    # # # vgg16 = vgg16_training(mydata, model_name_set_to='vgg16',  
+    # # #                        preload_model='saved_models_train_2000_test_100/mnist_vgg16_model.h5')
+    # # # pretrained_models = [vgg16_fgsm_trained, resnet50_fgsm_trained]
+    # # # ensemble_training(mydata, vgg16, pretrained_models=pretrained_models, batch_size=200, generate_images_dir_path="dataset_mnist_vgg16_ensemble_training_vgg16_fgsm_trained_resnet50_fgsm_trained")
+    # # vgg16_ensemble_trained = vgg16_training(mydata, model_name_set_to='vgg16_ensemble_trained',  
+    # #                               preload_model='saved_model_vgg16_ensemble_vgg16_fgsm_trained_resnet50_fgsm_trained/mnist_vgg16_model_ensemble_adversarial.h5', 
+    # #                               generate_images_fgsm=True,
+    # #                               generate_images_dir_path="dataset_mnist_train_2000_test_100_vgg16_ensemble_trained")
     
+    # # resnet101 = resnet101_training(mydata, model_name_set_to='resnet101',
+    # #                                model_save_to='saved_models_train_2000_test_100', 
+    # #                                train_model_clean=True, run_eval_clean=True)
+
     # resnet101 = resnet101_training(mydata, model_name_set_to='resnet101',
-    #                                model_save_to='saved_models_train_2000_test_100', 
-    #                                train_model_clean=True, run_eval_clean=True)
-
-    resnet101 = resnet101_training(mydata, model_name_set_to='resnet101',
-                                   preload_model='saved_models_train_2000_test_100/mnist_resnet101_model.h5',
-                                   generate_images_fgsm=True, generate_images_pgd=True, 
-                                   generate_images_dir_path="dataset_mnist_train_2000_test_100")
+    #                                preload_model='saved_models_train_2000_test_100/mnist_resnet101_model.h5',
+    #                                generate_images_fgsm=True, generate_images_pgd=True, 
+    #                                generate_images_dir_path="dataset_mnist_train_2000_test_100")
 
 
-    test_loss, test_accuracy = vgg16.model.evaluate(x=mydata.test_images_fgsm_effnetB5, y=mydata.test_labels, batch_size=128)
-    print(f'mnist_vgg16_model on effnet generated FGSM attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
-    # mnist_vgg16_model on effnet generated FGSM attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
+    # test_loss, test_accuracy = vgg16.model.evaluate(x=mydata.test_images_fgsm_effnetB5, y=mydata.test_labels, batch_size=128)
+    # print(f'mnist_vgg16_model on effnet generated FGSM attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
+    # # mnist_vgg16_model on effnet generated FGSM attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
 
-    test_loss, test_accuracy = vgg16.model.evaluate(x=mydata.test_images_pgd_effnetB5, y=mydata.test_labels, batch_size=128)
-    print(f'mnist_vgg16_model on effnet generated PGD attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
-    # mnist_vgg16_model on effnet generated PGD attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
+    # test_loss, test_accuracy = vgg16.model.evaluate(x=mydata.test_images_pgd_effnetB5, y=mydata.test_labels, batch_size=128)
+    # print(f'mnist_vgg16_model on effnet generated PGD attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
+    # # mnist_vgg16_model on effnet generated PGD attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
 
-    test_loss, test_accuracy = effnetB5.model.evaluate(x=mydata.test_images_fgsm_vgg16, y=mydata.test_labels, batch_size=128)
-    print(f'mnist_effnetB5_model on vgg generated FGSM attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
-    # mnist_effnetB5_model on vgg generated FGSM attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
+    # test_loss, test_accuracy = effnetB5.model.evaluate(x=mydata.test_images_fgsm_vgg16, y=mydata.test_labels, batch_size=128)
+    # print(f'mnist_effnetB5_model on vgg generated FGSM attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
+    # # mnist_effnetB5_model on vgg generated FGSM attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
 
-    test_loss, test_accuracy = effnetB5.model.evaluate(x=mydata.test_images_pgd_vgg16, y=mydata.test_labels, batch_size=128)
-    print(f'mnist_effnetB5_model on vgg generated PGD attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
-    # mnist_effnetB5_model on vgg generated PGD attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
+    # test_loss, test_accuracy = effnetB5.model.evaluate(x=mydata.test_images_pgd_vgg16, y=mydata.test_labels, batch_size=128)
+    # print(f'mnist_effnetB5_model on vgg generated PGD attrack data - Test loss: {test_loss}. Test Accuracy: {test_accuracy}')
+    # # mnist_effnetB5_model on vgg generated PGD attrack data - Test loss: 1.5758944749832153. Test Accuracy: 0.49619999527931213
 
-    print()
+    # print()
 
 
     # vgg16 = MyModel(10)
