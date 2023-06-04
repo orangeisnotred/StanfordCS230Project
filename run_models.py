@@ -69,7 +69,7 @@ class MyDataset:
         self.test_images_fgsm_resnet50 = None
         self.test_images_pgd_resnet50 = None
         pdb.set_trace()
-        
+
         if self.dataset == 'preprocessed':
             self.load_processed_data(self.processed_data_dir)
         elif self.dataset == 'mnist':
@@ -173,68 +173,66 @@ class MyDataset:
             val_indices = tf.random.shuffle(tf.range(0, len(self.train_images)))[:validation_size].numpy().tolist()
             train_indices = list(set(range(len(self.train_images))) - set(val_indices))
         
-        gpus = tf.config.list_logical_devices('GPU')
-        print('gpus: ', gpus)
-        with tf.device(gpus[0].name):
-            self.val_data = []
-            for index in val_indices:
-                image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
-                rgb_image = np.stack((image,) * 3, axis=-1)
-                self.val_data.append(rgb_image)
-            self.val_images = np.array(self.val_data)
-            self.val_labels = self.train_labels[val_indices]
-            logging.info(f"Val data ready")
 
-            self.train_data = []
-            for index in train_indices:
-                image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
-                rgb_image = np.stack((image,) * 3, axis=-1)
-                self.train_data.append(rgb_image)
-            self.train_images = np.array(self.train_data)
-            self.train_labels = self.train_labels[train_indices]
-            logging.info(f"Train data ready")
+        self.val_data = []
+        for index in val_indices:
+            image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
+            rgb_image = np.stack((image,) * 3, axis=-1)
+            self.val_data.append(rgb_image)
+        self.val_images = np.array(self.val_data)
+        self.val_labels = self.train_labels[val_indices]
+        logging.info(f"Val data ready")
 
-            if not test_example_counts:
-                test_example_counts = self.test_images.shape[0]
-            self.test_images = self.test_images[:test_example_counts, ...]
-            self.test_labels = self.test_labels[:test_example_counts, ...]
+        self.train_data = []
+        for index in train_indices:
+            image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
+            rgb_image = np.stack((image,) * 3, axis=-1)
+            self.train_data.append(rgb_image)
+        self.train_images = np.array(self.train_data)
+        self.train_labels = self.train_labels[train_indices]
+        logging.info(f"Train data ready")
 
-            self.test_data = []
-            for img in self.test_images:
-                image = cv2.resize(img, self.target_size, interpolation=cv2.INTER_LINEAR)
-                rgb_image = np.stack((image,) * 3, axis=-1)
-                self.test_data.append(rgb_image)
-            self.test_images = np.array(self.test_data)
-            logging.info(f"Test data ready")
+        if not test_example_counts:
+            test_example_counts = self.test_images.shape[0]
+        self.test_images = self.test_images[:test_example_counts, ...]
+        self.test_labels = self.test_labels[:test_example_counts, ...]
 
-            
-            dir_path = f"dataset_{self.dataset}_train_{train_exmaple_counts}_test_{test_example_counts}"
-            logging.info(f"make dir: {dir_path}")
-            os.makedirs(dir_path, exist_ok = True)
+        self.test_data = []
+        for img in self.test_images:
+            image = cv2.resize(img, self.target_size, interpolation=cv2.INTER_LINEAR)
+            rgb_image = np.stack((image,) * 3, axis=-1)
+            self.test_data.append(rgb_image)
+        self.test_images = np.array(self.test_data)
+        logging.info(f"Test data ready")
 
-            save_path = os.path.join(dir_path, "train_images.npy")
-            print("Save to", save_path)
-            np.save(save_path, self.train_images)
+        
+        dir_path = f"dataset_{self.dataset}_train_{train_exmaple_counts}_test_{test_example_counts}"
+        logging.info(f"make dir: {dir_path}")
+        os.makedirs(dir_path, exist_ok = True)
 
-            save_path = os.path.join(dir_path, "val_images.npy")
-            print("Save to", save_path)
-            np.save(save_path, self.val_images)
+        save_path = os.path.join(dir_path, "train_images.npy")
+        print("Save to", save_path)
+        np.save(save_path, self.train_images)
 
-            save_path = os.path.join(dir_path, "test_images.npy")
-            print("Save to", save_path)
-            np.save(save_path, self.test_images)
+        save_path = os.path.join(dir_path, "val_images.npy")
+        print("Save to", save_path)
+        np.save(save_path, self.val_images)
 
-            save_path = os.path.join(dir_path, "train_labels.npy")
-            print("Save to", save_path)
-            np.save(save_path, self.train_labels)
+        save_path = os.path.join(dir_path, "test_images.npy")
+        print("Save to", save_path)
+        np.save(save_path, self.test_images)
 
-            save_path = os.path.join(dir_path, "val_labels.npy")
-            print("Save to", save_path)
-            np.save(save_path, self.val_labels)
+        save_path = os.path.join(dir_path, "train_labels.npy")
+        print("Save to", save_path)
+        np.save(save_path, self.train_labels)
 
-            save_path = os.path.join(dir_path, "test_labels.npy")
-            print("Save to", save_path)
-            np.save(save_path, self.test_labels)
+        save_path = os.path.join(dir_path, "val_labels.npy")
+        print("Save to", save_path)
+        np.save(save_path, self.val_labels)
+
+        save_path = os.path.join(dir_path, "test_labels.npy")
+        print("Save to", save_path)
+        np.save(save_path, self.test_labels)
 
     def random_split_train_validation_set(self, data, labels, batch_size, random_state=0):
         
