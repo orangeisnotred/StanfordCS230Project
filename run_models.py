@@ -21,6 +21,7 @@ from cleverhans.tf2.attacks.fast_gradient_method import fast_gradient_method
 
 import logging
 import datetime
+os.makedirs('log_files', exist_ok = True)
 
 # Configure logging
 logging.basicConfig(
@@ -31,7 +32,7 @@ logging.basicConfig(
         logging.FileHandler(f'log_files/logfile_resnet50_{datetime.datetime.now()}.log'),  # Specify the path to the log file
     ]
 )
-os.makedirs('log_files', exist_ok = True)
+
 # Create a logger instance
 logger = logging.getLogger()
 
