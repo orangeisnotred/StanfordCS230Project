@@ -154,20 +154,20 @@ class MyDataset:
             val_indices = tf.random.shuffle(tf.range(0, len(self.train_images)))[:validation_size].numpy().tolist()
             train_indices = list(set(range(len(self.train_images))) - set(val_indices))
 
-        self.val_images = []
+        self.val_data = []
         for index in val_indices:
             image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
             rgb_image = np.stack((image,) * 3, axis=-1)
-            self.val_images.append(rgb_image)
-        self.val_images = np.array(self.val_images)
+            self.val_data.append(rgb_image)
+        self.val_images = np.array(self.val_data)
         self.val_labels = self.train_labels[val_indices]
 
-        self.train_images = []
+        self.train_data = []
         for index in train_indices:
             image = cv2.resize(self.train_images[index], self.target_size, interpolation=cv2.INTER_LINEAR)
             rgb_image = np.stack((image,) * 3, axis=-1)
-            self.train_images.append(rgb_image)
-        self.train_images = np.array(self.train_images)
+            self.train_data.append(rgb_image)
+        self.train_images = np.array(self.train_data)
         self.train_labels = self.train_labels[train_indices]
 
         if not test_example_counts:
@@ -175,12 +175,12 @@ class MyDataset:
         self.test_images = self.test_images[:test_example_counts, ...]
         self.test_labels = self.test_labels[:test_example_counts, ...]
 
-        self.test_images = []
+        self.test_data = []
         for img in self.test_images:
             image = cv2.resize(img, self.target_size, interpolation=cv2.INTER_LINEAR)
             rgb_image = np.stack((image,) * 3, axis=-1)
-            self.test_images.append(rgb_image)
-        self.test_images = np.array(self.test_images)
+            self.test_data.append(rgb_image)
+        self.test_images = np.array(self.test_data)
 
         dir_path = f"dataset_{self.dataset}_train_{train_exmaple_counts}_test_{test_example_counts}"
         os.makedirs(dir_path, exist_ok = True)
