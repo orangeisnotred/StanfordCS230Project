@@ -29,9 +29,9 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
-    # handlers=[
-    #     logging.FileHandler(f'log_files/logfile_resnet50_{cur_time}.log'),  # Specify the path to the log file
-    # ]
+    handlers=[
+        logging.FileHandler(f'log_files/logfile_resnet50_{cur_time}.log'),  # Specify the path to the log file
+    ]
 )
 
 # Create a logger instance
@@ -70,7 +70,6 @@ class MyDataset:
         self.test_images_pgd_effnetB5 = None
         self.test_images_fgsm_resnet50 = None
         self.test_images_pgd_resnet50 = None
-        pdb.set_trace()
 
         if self.dataset == 'preprocessed':
             self.load_processed_data(self.processed_data_dir)
