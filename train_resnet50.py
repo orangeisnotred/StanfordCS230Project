@@ -1,8 +1,26 @@
 import os
+import tensorflow as tf
 from tensorflow.keras.models import load_model
+from tensorflow.keras.callbacks import ModelCheckpoint
 from run_models import MyDataset, MyModel, generate_adversarial_images_with_fgsm, generate_adversarial_images_with_pgd
 
-os.environ["TF_METAL_ENABLED"] = "1"
+import logging
+import datetime
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%d %H:%M:%S',
+    handlers=[
+        logging.FileHandler(f'log_files/logfile_resnet50_{datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")}.log'),  # Specify the path to the log file
+    ]
+)
+
+# Create a logger instance
+logger = logging.getLogger()
+
+# os.environ["TF_METAL_ENABLED"] = "1"
 
 def resnet50_training(mydata, preload_model=None, model_name_set_to=None, model_save_to='saved_models_no_given_dir', generate_images_dir_path=None, train_model_clean=False, run_eval_clean=False, run_eval_fgsm=False, run_eval_pgd=False, 
                       generate_images_fgsm=False, generate_images_pgd=False, train_model_fgsm=False, train_model_pgd=False):
@@ -17,16 +35,78 @@ def resnet50_training(mydata, preload_model=None, model_name_set_to=None, model_
         print(f'{preload_model} Model Loaded!')
 
     if train_model_clean:
-        # # train preload resnet50 with mnist
-        # batch_size = 1000
-        # num = int(len(mydata.train_labels) / batch_size)
-        # for n in range(num):
-        #     print(f"Training - {n + 1}/{num}")
-        #     resnet50.model.fit(mydata.train_images[batch_size * n: batch_size * (n + 1)], mydata.train_labels[batch_size * n: batch_size * (n + 1)], epochs=50, batch_size=128)
+        # train preload resnet50 with mnist
+        
+        tf.debugging.set_log_device_placement(True)
+        gpus = tf.config.list_logical_devices('GPU')
+        print('gpus: ', gpus)
+        with tf.device(gpus[0].name):
+            batch_num = 10
+            train_batch_size = int(len(mydata.train_labels) / batch_num)
+            val_batch_size = int(len(mydata.val_labels) / batch_num)
+            # num = int(len(mydata.train_labels) / batch_size)
+            # val_batch_size = 
+            epochs = 100
+            for ep in range(epochs):
+                checkpoint_path = f'saved_models_params/resnet50_training/resnet50_ep_{ep}'
+                checkpoint_path += '_{epoch:02d}.h5'
+                checkpoint_callback = ModelCheckpoint(
+                    checkpoint_path,
+                    save_weights_only=False,  # Set to True if you only want to save model weights
+                    save_best_only=True,  # Set to True if you only want to save the best model based on validation loss
+                    monitor='val_loss',  # Metric to monitor for saving the best model
+                    verbose=1  # Prints a message when saving the model
+                )
+                for n in range(batch_num):
+                    train_data_shuffle_indices = tf.random.shuffle(tf.range(0, len(mydata.train_images))).numpy().tolist()
+                    val_data_shuffle_indices = tf.random.shuffle(tf.range(0, len(mydata.val_images))).numpy().tolist()
+                    train_data = mydata.train_images[train_data_shuffle_indices[train_batch_size * n: train_batch_size * (n + 1)]]
+                    train_labels = mydata.train_labels[train_data_shuffle_indices[train_batch_size * n: train_batch_size * (n + 1)]]
+                    val_data = mydata.val_images[val_data_shuffle_indices[val_batch_size * n: val_batch_size * (n + 1)]]
+                    val_labels = mydata.val_labels[val_data_shuffle_indices[val_batch_size * n: val_batch_size * (n + 1)]]
+                    print(f"Training - epoch - {ep} - {n + 1}/{batch_num}")
+                    resnet50.model.fit(
+                        train_data,
+                        train_labels,
+                        batch_size=64,
+                        epochs=1,
+                        validation_data=(val_data, val_labels),
+                        callbacks=[checkpoint_callback]
+                    )
+                    # save model
+                    resnet50.model.save(f'saved_models/mnist_resnet50_model_ep_{ep}.h5')
+                    print('saved_models/mnist_resnet50_model_ep_{ep}.h5 Model Saved!')
 
-        num_epochs = 100
-        batch_size = 64
-        train_data, val_data, train_labels, val_labels, shuffled_indices = mydata.random_split_train_validation_set(mydata.train_images, mydata.train_labels, batch_size)
+
+
+            for n in range(batch_num):
+                checkpoint_path = f'saved_models_params/resnet50_training/resnet50_{n}'
+                checkpoint_path += '_{epoch:02d}.h5'
+                checkpoint_callback = ModelCheckpoint(
+                    checkpoint_path,
+                    save_weights_only=False,  # Set to True if you only want to save model weights
+                    save_best_only=True,  # Set to True if you only want to save the best model based on validation loss
+                    monitor='val_loss',  # Metric to monitor for saving the best model
+                    verbose=1  # Prints a message when saving the model
+                )
+                train_data = mydata.train_images[train_batch_size * n: train_batch_size * (n + 1)]
+                train_labels = mydata.train_labels[train_batch_size * n: train_batch_size * (n + 1)]
+                val_data = mydata.val_images[val_batch_size * n: val_batch_size * (n + 1)]
+                val_labels = mydata.val_labels[val_batch_size * n: val_batch_size * (n + 1)]
+                print(f"Training - {n + 1}/{batch_num}")
+                resnet50.model.fit(
+                    train_data,
+                    train_labels,
+                    batch_size=64,
+                    epochs=100,
+                    validation_data=(val_data, val_labels),
+                    callbacks=[checkpoint_callback]
+                )
+                # resnet50.model.fit(mydata.train_images[batch_size * n: batch_size * (n + 1)], mydata.train_labels[batch_size * n: batch_size * (n + 1)], epochs=50, batch_size=128)
+
+        # num_epochs = 100
+        # batch_size = 64
+        # train_data, val_data, train_labels, val_labels, shuffled_indices = mydata.random_split_train_validation_set(mydata.train_images, mydata.train_labels, batch_size)
         # resnet50.model.fit(
         #     train_iterator,
         #     epochs=num_epochs,
@@ -45,13 +125,13 @@ def resnet50_training(mydata, preload_model=None, model_name_set_to=None, model_
             
         # )
         
-        # # save model
-        # resnet50.model.save(f'{model_save_to}/mnist_resnet50_model.h5')
-        # print('mnist_resnet50_model Model Saved!')
+        # save model
+        resnet50.model.save(f'{model_save_to}/mnist_resnet50_model.h5')
+        print('mnist_resnet50_model Model Saved!')
 
-        # # save model
-        # resnet50.model.save_weights(f'{model_save_to}/mnist_resnet50_weights.h5')
-        # print('mnist_resnet50_model Weights Saved!')
+        # save model
+        resnet50.model.save_weights(f'{model_save_to}/mnist_resnet50_weights.h5')
+        print('mnist_resnet50_model Weights Saved!')
 
     if generate_images_fgsm:
         mydata.train_images_fgsm_resnet50 = generate_adversarial_images_with_fgsm(resnet50.model, mydata.train_images, "train_images_fgsm_resnet50.npy", dir_path=generate_images_dir_path)
