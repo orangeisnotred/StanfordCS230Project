@@ -34,8 +34,7 @@ def resnet50_training():
     for param in model.parameters():
         param.requires_grad = False
     num_classes = 10
-    model.classifier[-1] = nn.Linear(model.classifier[-1].in_features, num_classes)
-
+    model.fc = nn.Linear(model.fc.in_features, num_classes)
 
     # Load and preprocess the MNIST dataset
     transform = transforms.Compose([
@@ -60,7 +59,7 @@ def resnet50_training():
 
     # Define the loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     # Training loop
     best_loss = np.inf
@@ -75,7 +74,7 @@ def resnet50_training():
         print(f"Training - epoch - {epoch+1}/{num_epochs}")
         logger.info(f"Training - epoch - {epoch+1}/{num_epochs}")
         model.train()  # Set the model to training mode
-        train_loss = 0
+        running_loss = 0
         correct = 0
         total = 0
 
@@ -90,7 +89,7 @@ def resnet50_training():
             loss.backward()
             optimizer.step()
 
-            train_loss += loss.item()
+            running_loss += loss.item()
 
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
@@ -122,8 +121,8 @@ def resnet50_training():
 
         torch.save(model, f'{save_model_dir}/resnet50_ep_{epoch+1}.pth')
         print(f"Saved {save_model_dir}/resnet50_ep_{epoch+1}.pth")
-        print(f"Epoch [{epoch+1}/{num_epochs}], train_loss: {train_loss:.4f}, train_accuracy: {train_accuracy:.4f}, val_loss: {val_loss:.4f}, val_accuracy: {val_accuracy:.4f}")
-        logger.info(f"Epoch [{epoch+1}/{num_epochs}], train_loss: {train_loss:.4f}, train_accuracy: {train_accuracy:.4f}, val_loss: {val_loss:.4f}, val_accuracy: {val_accuracy:.4f}")
+        print(f"Epoch [{epoch+1}/{num_epochs}], running_loss: {running_loss:.4f}, train_accuracy: {train_accuracy:.4f}, val_loss: {val_loss:.4f}, val_accuracy: {val_accuracy:.4f}")
+        logger.info(f"Epoch [{epoch+1}/{num_epochs}], running_loss: {running_loss:.4f}, train_accuracy: {train_accuracy:.4f}, val_loss: {val_loss:.4f}, val_accuracy: {val_accuracy:.4f}")
 
         if val_loss < best_loss:
             best_loss = val_loss
@@ -134,7 +133,7 @@ def resnet50_training():
             early_stop_counter += 1
 
         if epoch >= 20 and early_stop_counter >= patience:
-            print(f"Early stopping at {epoch+1} after {patience} epochs without improvement.")
+            print(f"Early stopping after {epoch+1} epochs without improvement.")
             break
     
     model.load_state_dict(best_model_weights)
