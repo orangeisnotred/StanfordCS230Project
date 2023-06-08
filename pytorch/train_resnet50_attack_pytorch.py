@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+from torch.nn import DataParallel
 import torch
 import torchvision.transforms as transforms
 from torchvision.datasets import MNIST
@@ -35,7 +35,7 @@ logger = logging.getLogger()
 
 def resnet50_attack_training():
     # Define the Resmodel model
-    model = torch.load('saved_model/resnet50_training/resnet50_best_model.pth')
+    model = torch.load('saved_model/resnet50_best_model.pth')
 
     # Load and preprocess the MNIST dataset
     transform = transforms.Compose([
@@ -57,7 +57,10 @@ def resnet50_attack_training():
     print("device: ", device)
     logger.info("device:")
     logger.info(device.type)
-    model = model.to(device)
+    if torch.cuda.device_count() > 1:
+        print("Using", torch.cuda.device_count(), "GPUs!")
+        model = DataParallel(model)
+    model = model.cuda()
 
     # Define the loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
@@ -84,8 +87,8 @@ def resnet50_attack_training():
         for images, labels in train_loader:
             print('Time: ', datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
             print(f'batch: {batch+1}/{len(train_loader)}')
-            images = images.to(device)
-            labels = labels.to(device)
+            images = images.cuda()
+            labels = labels.cuda()
 
             images = projected_gradient_descent(model, images, eps=0.3, eps_iter=0.01, nb_iter=40, norm=np.inf)
             optimizer.zero_grad()
@@ -116,8 +119,8 @@ def resnet50_attack_training():
         for images, labels in test_loader:
             print('Time: ', datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
             print(f'batch: {batch+1}/{len(test_loader)}')
-            images = images.to(device)
-            labels = labels.to(device)
+            images = images.cuda()
+            labels = labels.cuda()
             total += labels.size(0)
 
             outputs = model(images)

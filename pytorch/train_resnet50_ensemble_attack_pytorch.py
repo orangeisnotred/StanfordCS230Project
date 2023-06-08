@@ -5,7 +5,6 @@ from torch.nn import DataParallel
 import torch
 import torchvision.transforms as transforms
 from torchvision.datasets import MNIST
-from torchvision.models import vgg16
 
 from cleverhans.torch.attacks.fast_gradient_method import fast_gradient_method
 from cleverhans.torch.attacks.projected_gradient_descent import (
@@ -14,7 +13,7 @@ from cleverhans.torch.attacks.projected_gradient_descent import (
 
 import os
 import numpy as np
-
+import random
 import logging
 import datetime
 
@@ -26,17 +25,19 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S',
     handlers=[
-        logging.FileHandler(f'log_files/logfile_vgg16_{cur_time}.log'),  # Specify the path to the log file
+        logging.FileHandler(f'log_files/logfile_resnet50_ens_{cur_time}.log'),  # Specify the path to the log file
     ]
 )
 
 # Create a logger instance
 logger = logging.getLogger()
 
-def vgg16_attack_training():
+def resnet50_ensemble_attack_training():
     # Define the Resmodel model
-    model = torch.load('pytorch/saved_model/vgg16_best_model.pth')
-
+    vgg16_model = torch.load('saved_model/vgg16_best_model.pth')
+    resnet50_model = torch.load('saved_model/resnet50_best_model.pth')
+    resnet101_model = torch.load('saved_model/resnet101_best_model.pth')
+    
     # Load and preprocess the MNIST dataset
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
@@ -57,14 +58,24 @@ def vgg16_attack_training():
     print("device: ", device)
     logger.info("device:")
     logger.info(device.type)
-    if torch.cuda.device_count() > 1:
-        print("Using", torch.cuda.device_count(), "GPUs!")
-        model = DataParallel(model)
-    model = model.cuda()
+    # if torch.cuda.device_count() > 1:
+    #     print("Using", torch.cuda.device_count(), "GPUs!")
+    #     vgg16_model = DataParallel(vgg16_model)
+    #     resnet50_model = DataParallel(resnet50_model)
+    #     resnet101_model = DataParallel(vgg16_model,)
+    # vgg16_model = vgg16_model.cuda()
+    # resnet50_model = resnet50_model.cuda()
+    # resnet101_model = resnet101_model.cuda()
+
+    vgg16_model = vgg16_model.to(device)
+    resnet50_model = resnet50_model.to(device)
+    resnet101_model = resnet101_model.to(device)
+    models = [resnet50_model, vgg16_model, resnet101_model]
+
 
     # Define the loss function and optimizer
     loss_fn = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(resnet50_model.parameters(), lr=0.001, momentum=0.9)
 
     # Training loop
     best_loss = np.inf
@@ -72,13 +83,13 @@ def vgg16_attack_training():
     best_model_weights = None
     patience = 3
     num_epochs = 50
-    save_model_dir = "saved_model/vgg16_pdg_training/"
+    save_model_dir = "saved_model/resnet50_ens_pdg_training/"
     os.makedirs(save_model_dir, exist_ok=True)
     for epoch in range(num_epochs):
         print(datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
         print(f"Training - epoch - {epoch+1}/{num_epochs}")
         logger.info(f"Training - epoch - {epoch+1}/{num_epochs}")
-        model.train()  # Set the model to training mode
+        resnet50_model.train()  # Set the model to training mode
         train_loss = 0
         correct = 0
         total = 0
@@ -87,12 +98,17 @@ def vgg16_attack_training():
         for images, labels in train_loader:
             print('Time: ', datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
             print(f'batch: {batch+1}/{len(train_loader)}')
-            images = images.cuda()
-            labels = labels.cuda()
-
-            images = projected_gradient_descent(model, images, eps=0.3, eps_iter=0.01, nb_iter=40, norm=np.inf)
+            # images = images.cuda()
+            # labels = labels.cuda()
+            images = images.to(device)
+            labels = labels.to(device)
+            rand_num = random.randint(0, 2)
+            model = models[rand_num]
+            adv_images = projected_gradient_descent(model, images, eps=0.3, eps_iter=0.01, nb_iter=40, norm=np.inf)
+            images = torch.cat([images, adv_images], dim=0)
+            labels = torch.cat([labels, labels], dim=0)
             optimizer.zero_grad()
-            outputs = model(images)
+            outputs = resnet50_model(images)
             loss = loss_fn(outputs, labels)
             loss.backward()
             optimizer.step()
@@ -109,7 +125,7 @@ def vgg16_attack_training():
         # Evaluate on the test set
         print(f"Eval - epoch - {epoch+1}/{num_epochs}")
         logger.info(f"Eval - epoch - {epoch+1}/{num_epochs}")
-        model.eval()  # Set the model to evaluation mode
+        resnet50_model.eval()  # Set the model to evaluation mode
         correct = 0
         adv_correct = 0
         total = 0
@@ -119,18 +135,22 @@ def vgg16_attack_training():
         for images, labels in test_loader:
             print('Time: ', datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f"))
             print(f'batch: {batch+1}/{len(test_loader)}')
-            images = images.cuda()
-            labels = labels.cuda()
+            # images = images.cuda()
+            # labels = labels.cuda()
+            images = images.to(device)
+            labels = labels.to(device)
             total += labels.size(0)
 
-            outputs = model(images)
+            outputs = resnet50_model(images)
             _, predicted = torch.max(outputs.data, 1)
             val_loss = loss_fn(outputs, labels)
             val_loss += val_loss.item() * images.size(0)
             correct += (predicted == labels).sum().item()
 
+            rand_num = random.randint(0, 2)
+            model = models[rand_num]
             adv_images = projected_gradient_descent(model, images, eps=0.3, eps_iter=0.01, nb_iter=40, norm=np.inf)
-            adv_outputs = model(adv_images)
+            adv_outputs = resnet50_model(adv_images)
             _, adv_predicted = torch.max(adv_outputs.data, 1)
             adv_val_loss = loss_fn(adv_outputs, labels)
             adv_val_loss += adv_val_loss.item() * images.size(0)
@@ -141,8 +161,8 @@ def vgg16_attack_training():
         val_accuracy = correct / total
         adv_val_accuracy = adv_correct / total
 
-        torch.save(model, f'{save_model_dir}/vgg16_ep_{epoch+1}_pdg_trained.pth')
-        print(f"Saved {save_model_dir}/vgg16_ep_{epoch+1}_pdg_trained.pth")
+        torch.save(model, f'{save_model_dir}/resnet50_ep_{epoch+1}_ens_pdg_trained.pth')
+        print(f"Saved {save_model_dir}/resnet50_ep_{epoch+1}_ens_pdg_trained.pth")
         print(f"Epoch [{epoch+1}/{num_epochs}], train_loss: {train_loss:.4f}, train_accuracy: {train_accuracy:.4f}, val_loss: {val_loss:.4f}, val_accuracy: {val_accuracy:.4f}, adv_val_loss: {adv_val_loss:.4f}, adv_val_accuracy: {adv_val_accuracy:.4f}")
         logger.info(f"Epoch [{epoch+1}/{num_epochs}], train_loss: {train_loss:.4f}, train_accuracy: {train_accuracy:.4f}, val_loss: {val_loss:.4f}, val_accuracy: {val_accuracy:.4f}, adv_val_loss: {adv_val_loss:.4f}, adv_val_accuracy: {adv_val_accuracy:.4f}")
 
@@ -159,5 +179,5 @@ def vgg16_attack_training():
             break
     
     model.load_state_dict(best_model_weights)
-    torch.save(model, f'{save_model_dir}/vgg16_best_model_pdg_trained.pth')
-    print(f"Saved {save_model_dir}/vgg16_best_model_pdg_trained.pth")
+    torch.save(model, f'{save_model_dir}/resnet50_best_model_ens_pdg_trained.pth')
+    print(f"Saved {save_model_dir}/resnet50_best_model_ens_pdg_trained.pth")

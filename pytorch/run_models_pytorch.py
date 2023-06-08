@@ -1,9 +1,21 @@
 from train_resnet50_pytorch import resnet50_training
 from train_resnet101_pytorch import resnet101_training
 from train_vgg16_pytorch import vgg16_training
+from train_resnet50_attack_pytorch import resnet50_attack_training
+from train_resnet101_attack_pytorch import resnet101_attack_training
+from train_vgg16_attack_pytorch import vgg16_attack_training
+from train_inceptionv3_attack_pytorch import inceptionv3_attack_training
+from train_inceptionv3_pytorch import inceptionv3_training
+from train_vgg16_ensemble_attack_pytorch import vgg16_ensemble_attack_training
 
 vgg16_training()
 resnet101_training()
 resnet50_training()
+vgg16_attack_training()
+resnet101_attack_training()
+resnet50_attack_training()
+inceptionv3_training()
+inceptionv3_attack_training()
+vgg16_ensemble_attack_training()
 
 print('Done')

@@ -7,6 +7,7 @@ from run_models import MyDataset, MyModel, generate_adversarial_images_with_fgsm
 import logging
 import datetime
 
+os.makedirs('log_files', exist_ok = True)
 # Configure logging
 cur_time = datetime.datetime.now().strftime("%Y_%m_%d_%H_%M_%S_%f")
 logging.basicConfig(
